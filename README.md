@@ -35,9 +35,9 @@ pip install torch torchvision opencv-python numpy
 编辑 `配置_批处理.txt`：
 
 ```ini
-# 输入输出目录
-输入 = C:\Users\Administrator\Desktop\input
-输出 = C:\Users\Administrator\Desktop\output
+# 输入输出目录（相对于项目根目录，无则自动创建）
+输入 = _test_in
+输出 = _test_out
 
 # 模型选择: pro-conservative-up2x, v3-conservative-up2x 等
 模型 = pro-conservative-up2x
@@ -48,12 +48,14 @@ pip install torch torchvision opencv-python numpy
 去重 = 是       # 跳过重复帧
 ```
 
+将待处理的视频放入 `_test_in` 文件夹，处理结果会输出到 `_test_out`。两个文件夹不存在时会自动创建。也可以改为绝对路径。
+
 ### 2. 运行
 
-双击 `run_async_v3.bat` 或命令行运行：
+双击 `run_async_v3.bat`（自动使用项目 `venv` 中的 Python）或命令行运行：
 
 ```bash
-python run_video_async.py --config 配置_批处理.txt
+venv\Scripts\python run_video_async.py --config 配置_批处理.txt
 ```
 
 ## 项目文件说明

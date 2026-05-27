@@ -1,11 +1,13 @@
 __pycache__/
 *.pyc
+!upcunet_v3.pyc
 *.pyo
 venv/
 ._____temp/
 .msc
 _test_dedup/
 _test_in/
+_test_out/
 weights/
 weights_pro/
 weights_v3/

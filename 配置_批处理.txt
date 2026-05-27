@@ -1,8 +1,9 @@
 # Real-CUGAN 批处理配置
 # 修改下面内容后保存，双击 run_async_v3.bat 运行
 
-输入 = C:\Users\Administrator\Desktop\input
-输出 = C:\Users\Administrator\Desktop\output
+# 输入输出目录（相对于项目根目录，无则自动创建）
+输入 = _test_in
+输出 = _test_out
 
 # 模式：视频 或 图片
 模式 = 视频

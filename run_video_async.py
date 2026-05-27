@@ -492,6 +492,7 @@ def main():
 
     inp = Path(args.input)
     out = Path(args.output)
+    inp.mkdir(parents=True, exist_ok=True)
     out.mkdir(parents=True, exist_ok=True)
 
     # 支持文件夹（批量处理多个视频）
