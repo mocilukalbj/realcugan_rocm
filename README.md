@@ -67,6 +67,24 @@ python run_video_async.py --config 配置_批处理.txt
 | `run_video_workerpool.py` | 多视频 Worker Pool |
 | `配置_批处理.txt` | 配置文件 |
 
+## 性能表现
+
+### 测试结果
+
+| 视频规格 | 输出 | 原始帧数 | 去重后 | 处理速度 | 去重率 |
+|---------|------|---------|--------|----------|--------|
+| 1920x1080 23.98fps | 3840x2160 | 1512 | 550 | **15.3 fps** | 63.6% |
+
+```
+[Input]  0.mkv  |  1920x1080 → 3840x2160  |  23.98fps
+[Async]  Pipeline enabled (read+dedup overlap with GPU)
+[GPU]    Warmup (JIT compile)...
+[GPU]    Warmup done, starting async pipeline...
+  [ 1512/1512] 100.0%  15.3fps  ETA 0.0mm
+[Done] 1512 frames in 98.9s (15.3 fps)
+  Dedup: 962 duplicates skipped (63.6%)
+```
+
 ## 性能优化
 
 ### 异步流水线
