@@ -1,6 +1,5 @@
 __pycache__/
 *.pyc
-!upcunet_v3.pyc
 *.pyo
 venv/
 ._____temp/
