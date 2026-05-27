@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+venv/
+._____temp/
+.msc
+_test_dedup/
+_test_in/
+weights/
+weights_pro/
+weights_v3/
+*.pth
+*.onnx
+log.txt

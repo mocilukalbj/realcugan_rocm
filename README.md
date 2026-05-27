@@ -45,7 +45,6 @@ pip install torch torchvision opencv-python numpy
 
 # 高级选项
 分块模式 = 0    # 0=不分块, 2=2x2分块
-批大小 = 4
 去重 = 是       # 跳过重复帧
 ```
 
@@ -61,10 +60,9 @@ python run_video_async.py --config 配置_批处理.txt
 
 | 文件 | 用途 |
 |------|------|
-| `run_video_async.py` | **主程序** - 异步流水线版本（推荐） |
-| `run_video_batch.py` | 原版批量处理 |
-| `run_video_batch_optimized.py` | 优化版批量处理 |
-| `run_video_workerpool.py` | 多视频 Worker Pool |
+| `run_video_async.py` | **主程序** - 异步流水线版（推荐） |
+| `run_async_launcher.py` | 启动器（自动查找 Python） |
+| `run_async_v3.bat` | Windows 批处理快捷启动 |
 | `配置_批处理.txt` | 配置文件 |
 
 ## 性能表现
@@ -104,10 +102,11 @@ python run_video_async.py --config 配置_批处理.txt
 - 直接复用上一帧的超分结果
 - 显著减少 GPU 工作量
 
-### 使用 Worker Pool (多视频)
+### 批量处理多个视频
 
 ```bash
-python run_video_workerpool.py <输入文件夹> <输出文件夹> --parallel 4
+# 直接传入文件夹，会自动处理其中所有视频
+python run_video_async.py <输入文件夹> <输出文件夹> --dedup
 ```
 
 ## 模型说明
@@ -128,27 +127,29 @@ python run_video_async.py <input> <output> [options]
   --config CONFIG        配置文件路径
   --model MODEL          模型文件
   --scale SCALE          放大倍数 (2/3/4)
-  --tile-mode MODE       分块模式 (0=不分块)
+  --tile-mode MODE       分块模式 (0=不分块, 2=2x2分块)
   --cache-mode MODE      缓存模式 (0-3)
-  --batch-size SIZE      批处理大小
-  --dedup                启用去重
+  --dedup                启用去重（跳过重复帧）
+  --dedup-window N       去重窗口大小（默认自动）
   --fp32                 使用 FP32 (默认 FP16)
+  --crf N                编码质量 (libx265, 默认 18)
+  --amf-qp N             AMF 编码质量 (默认 18)
 ```
 
 ## 常见问题
 
 ### Q: 显存不够怎么办？
-A: 减小 `批大小` 或启用 `分块模式 = 2`
+A: 启用 `分块模式 = 2` 或更高（值越大块越小，显存占用越低）
 
 ### Q: 处理速度慢？
-A: 1) 开启去重 2) 使用异步版本 3) 减小 tile_mode
+A: 1) 开启去重 2) 启用分块模式减少显存压力 3) 确认 GPU 驱动正常
 
 ### Q: 有拼接缝隙？
 A: 将 `分块模式` 设为 0，但这会增加显存占用
 
 ## 技术细节
 
-- 异步流水线使用 `threading.Queue` 实现双缓冲
+- 异步流水线使用 `queue.Queue` 实现双缓冲
 - 去重使用 64x64 缩略图比较，阈值 3.0
 - 预热后模型常驻 GPU，避免重复加载
 

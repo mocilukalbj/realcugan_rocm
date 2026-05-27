@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent
-PYTHON = r"G:\SD.Next\sdnext\venv\Scripts\python.exe"
+PYTHON = sys.executable  # 使用当前运行的 Python 解释器
 
 def main():
     print("=" * 50)
@@ -25,12 +25,10 @@ def main():
         print(f"[Error] Config not found: {CONFIG}")
         sys.exit(1)
 
-    # 读取配置文件并显示
     print(f"[Script] {script}")
     print(f"[Config] {CONFIG}")
     print()
 
-    # 读取配置显示路径
     try:
         with open(CONFIG, "r", encoding="utf-8") as f:
             for line in f:
@@ -44,9 +42,7 @@ def main():
     print("Starting...")
     print()
 
-    # 使用 -u 禁用缓冲，确保实时输出
     cmd = [PYTHON, "-u", str(script), "--config", str(CONFIG)]
-
     result = subprocess.run(cmd)
     sys.exit(result.returncode)
 

@@ -2,12 +2,10 @@
 Real-CUGAN 异步流水线版 - 单帧处理 + 异步 I/O 减少 GPU 空闲
 
 核心优化:
-1. 使用双缓冲：GPU 处理当前帧时，CPU 预读下一帧
-2. torch.cuda.Stream 实现异步数据传输
-3. 预热后保持模型在 GPU 上（不重复加载）
-4. 减少 CPU-GPU 同步等待
+1. 后台线程预读下一帧原始字节，与当前帧 GPU 推理重叠
+2. 预热后保持模型常驻 GPU，避免重复加载
 
-用法: python run_video_async.py <输入> <输出> [--batch-size 1]
+用法: python run_video_async.py <输入> <输出> [--dedup]
 """
 import os
 import sys
@@ -406,9 +404,9 @@ def parse_config(path):
 
     alias_map = {
         "输入": "input", "输出": "output", "模式": "mode", "模型": "model",
-        "放大倍数": "scale", "分块模式": "tile_mode", "批大小": "batch_size",
+        "放大倍数": "scale", "分块模式": "tile_mode",
         "AMF质量": "amf_qp", "输出后缀": "suffix", "日志": "log",
-        "去重": "dedup", "并行数": "parallel",
+        "去重": "dedup",
     }
     for cn, en in alias_map.items():
         if cn in cfg:
@@ -510,7 +508,7 @@ def main():
             result = pipeline.process_video(v, out_path)
             if result.get("error"):
                 print(f"[Error] {v.name}: {result['error']}")
-        print(f"\n[All Done] ���理完成 {len(vids)} 个视频")
+        print(f"\n[All Done] 处理完成 {len(vids)} 个视频")
     elif inp.is_file():
         # 单文件处理
         if out.is_dir():
