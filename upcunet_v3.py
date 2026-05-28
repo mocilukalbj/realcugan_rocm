@@ -9,6 +9,40 @@ from torch import nn as nn
 from torch.nn import functional as F
 import os,sys
 import numpy as np
+
+# cuDNN benchmark 缓存机制
+_CUDNN_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".cudnn_benchmark_done")
+
+def _setup_cudnn_benchmark():
+    """根据缓存状态决定是否启用 cudnn benchmark"""
+    if not torch.cuda.is_available():
+        return False, "CUDA not available"
+
+    # 检查缓存是否存在
+    if os.path.exists(_CUDNN_CACHE_FILE):
+        return False, "Using cached benchmark"
+
+    # 无缓存，启用 benchmark 并在首次预热后创建缓存
+    try:
+        torch.backends.cudnn.benchmark = True
+        torch.backends.cudnn.deterministic = False
+        return True, "Benchmark mode enabled"
+    except Exception as e:
+        return False, f"Error: {e}"
+
+_cudnn_status, _cudnn_msg = _setup_cudnn_benchmark()
+
+# 创建缓存的函数（供预热完成后调用）
+def _mark_cudnn_benchmark_done():
+    """标记 benchmark 完成，创建缓存文件"""
+    try:
+        with open(_CUDNN_CACHE_FILE, 'w') as f:
+            import torch.version
+            f.write(f"torch:{torch.__version__}\n")
+            f.write(f"cudnn:{torch.backends.cudnn.version()}\n")
+    except Exception:
+        pass
+
 root_path=os.path.abspath('.')
 sys.path.append(root_path)
 def q(inp,cache_mode):
@@ -1259,6 +1293,17 @@ class UpCunet4x(nn.Module):
         return res
 class RealWaifuUpScaler(object):
     def __init__(self,scale,weight_path,half,device):
+        # ROCm/cuDNN 优化配置 - 显示状态
+        if device != "cpu" and "cuda" in device:
+            global _cudnn_status, _cudnn_msg
+            cudnn_ver = torch.backends.cudnn.version()
+            if _cudnn_status:
+                print(f"[cuDNN] Benchmark mode (v{cudnn_ver//1000}.{cudnn_ver%1000//100}.{cudnn_ver%100}) - first run, may be slow")
+            else:
+                print(f"[cuDNN] Cached (v{cudnn_ver//1000}.{cudnn_ver%1000//100}.{cudnn_ver%100}) - fast startup")
+
+        weight = torch.load(weight_path, map_location="cpu")
+
         weight = torch.load(weight_path, map_location="cpu")
         self.pro="pro"in weight
         if(self.pro):del weight["pro"]

@@ -56,7 +56,7 @@ signal.signal(signal.SIGTERM, _signal_handler)
 os.environ.setdefault("PYTORCH_ALLOC_CONF", "max_split_size_mb:128")
 
 sys.path.insert(0, str(Path(__file__).parent))
-from upcunet_v3 import RealWaifuUpScaler
+from upcunet_v3 import RealWaifuUpScaler, _mark_cudnn_benchmark_done
 
 MODEL_DIR = Path(__file__).parent
 SUPPORTED_VIDEO = {'.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv', '.wmv', '.m4v'}
@@ -282,6 +282,9 @@ class AsyncPipeline:
         self.frame_idx = 1
         print(f"[GPU]     Warmup done, starting async pipeline...\n", flush=True)
 
+        # 标记 benchmark 完成，创建缓存文件
+        _mark_cudnn_benchmark_done()
+
         # ── 启动异步预读线程 ──
         self.frame_queue = queue.Queue(maxsize=2)  # 双缓冲
         self.read_done = False
@@ -422,7 +425,7 @@ def main():
     p.add_argument("--model", type=str, default="weights_pro/pro-conservative-up2x.pth")
     p.add_argument("--scale", type=int, default=2)
     p.add_argument("--tile-mode", type=int, default=0)
-    p.add_argument("--cache-mode", type=int, default=2)
+    p.add_argument("--cache-mode", type=int, default=0)
     p.add_argument("--alpha", type=float, default=1.0)
     p.add_argument("--fp32", action="store_true")
     p.add_argument("--crf", type=int, default=18)

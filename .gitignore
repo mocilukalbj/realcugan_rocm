@@ -13,3 +13,4 @@ weights_v3/
 *.pth
 *.onnx
 log.txt
+.cudnn_benchmark_done
