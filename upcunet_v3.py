@@ -1259,11 +1259,6 @@ class UpCunet4x(nn.Module):
         return res
 class RealWaifuUpScaler(object):
     def __init__(self,scale,weight_path,half,device):
-        # 启用 cuDNN benchmark（对固定尺寸输入的卷积有显著优化效果）
-        if torch.cuda.is_available():
-            torch.backends.cudnn.benchmark = True
-            torch.backends.cudnn.enabled = True
-
         weight = torch.load(weight_path, map_location="cpu")
         self.pro="pro"in weight
         if(self.pro):del weight["pro"]
@@ -1272,16 +1267,6 @@ class RealWaifuUpScaler(object):
         else:self.model=self.model.to(device)
         self.model.load_state_dict(weight, strict=True)
         self.model.eval()
-
-        # 使用 torch.compile 编译模型（PyTorch 2.0+，ROCm 6.1+ 支持）
-        # 可获 20-40% 推理提速，减少内核调度开销
-        if torch.cuda.is_available():
-            try:
-                self.model = torch.compile(self.model, mode="reduce-overhead")
-            except Exception as e:
-                # 如果 compile 失败（如 ROCm 版本不支持），回退到原生模型
-                print(f"[Warning] torch.compile failed: {e}, using native model")
-
         self.half=half
         self.device=device
 
