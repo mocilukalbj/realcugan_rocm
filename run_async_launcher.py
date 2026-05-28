@@ -7,7 +7,8 @@ import os
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent
-PYTHON = sys.executable  # 使用当前运行的 Python 解释器
+# 使用 venv 的 Python，而不是当前解释器
+PYTHON = SCRIPT_DIR / "venv" / "Scripts" / "python.exe"
 
 def main():
     print("=" * 50)
@@ -25,6 +26,7 @@ def main():
         print(f"[Error] Config not found: {CONFIG}")
         sys.exit(1)
 
+    print(f"[Python] {PYTHON}")
     print(f"[Script] {script}")
     print(f"[Config] {CONFIG}")
     print()
@@ -42,7 +44,7 @@ def main():
     print("Starting...")
     print()
 
-    cmd = [PYTHON, "-u", str(script), "--config", str(CONFIG)]
+    cmd = [str(PYTHON), "-u", str(script), "--config", str(CONFIG)]
     result = subprocess.run(cmd)
     sys.exit(result.returncode)
 

@@ -13,6 +13,9 @@ import numpy as np
 # cuDNN benchmark 缓存机制
 _CUDNN_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".cudnn_benchmark_done")
 
+# torch.compile 缓存机制
+_COMPILE_CACHE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".compile_cache_done")
+
 def _setup_cudnn_benchmark():
     """根据缓存状态决定是否启用 cudnn benchmark"""
     if not torch.cuda.is_available():
@@ -30,9 +33,21 @@ def _setup_cudnn_benchmark():
     except Exception as e:
         return False, f"Error: {e}"
 
-_cudnn_status, _cudnn_msg = _setup_cudnn_benchmark()
+def _setup_torch_compile():
+    """根据缓存状态决定是否启用 torch.compile (max-autotune)"""
+    if not torch.cuda.is_available():
+        return False, "CUDA not available"
 
-# 创建缓存的函数（供预热完成后调用）
+    # 检查缓存是否存在
+    if os.path.exists(_COMPILE_CACHE_FILE):
+        return False, "Using cached compile"
+
+    # 无缓存，启用编译
+    try:
+        return True, "Compile mode enabled"
+    except Exception as e:
+        return False, f"Error: {e}"
+
 def _mark_cudnn_benchmark_done():
     """标记 benchmark 完成，创建缓存文件"""
     try:
@@ -42,6 +57,19 @@ def _mark_cudnn_benchmark_done():
             f.write(f"cudnn:{torch.backends.cudnn.version()}\n")
     except Exception:
         pass
+
+def _mark_compile_done():
+    """标记 torch.compile 完成，创建缓存文件"""
+    try:
+        with open(_COMPILE_CACHE_FILE, 'w') as f:
+            import torch.version
+            f.write(f"torch:{torch.__version__}\n")
+            f.write(f"compile:max-autotune\n")
+    except Exception:
+        pass
+
+_cudnn_status, _cudnn_msg = _setup_cudnn_benchmark()
+_compile_status, _compile_msg = _setup_torch_compile()
 
 root_path=os.path.abspath('.')
 sys.path.append(root_path)
@@ -1292,17 +1320,22 @@ class UpCunet4x(nn.Module):
         if(w0!=pw or h0!=ph):res=res[:,:,:h0*4,:w0*4]
         return res
 class RealWaifuUpScaler(object):
-    def __init__(self,scale,weight_path,half,device):
+    def __init__(self,scale,weight_path,half,device,compile_enabled=True):
         # ROCm/cuDNN 优化配置 - 显示状态
         if device != "cpu" and "cuda" in device:
-            global _cudnn_status, _cudnn_msg
+            global _cudnn_status, _cudnn_msg, _compile_status, _compile_msg
             cudnn_ver = torch.backends.cudnn.version()
             if _cudnn_status:
                 print(f"[cuDNN] Benchmark mode (v{cudnn_ver//1000}.{cudnn_ver%1000//100}.{cudnn_ver%100}) - first run, may be slow")
             else:
                 print(f"[cuDNN] Cached (v{cudnn_ver//1000}.{cudnn_ver%1000//100}.{cudnn_ver%100}) - fast startup")
 
-        weight = torch.load(weight_path, map_location="cpu")
+            if compile_enabled and _compile_status:
+                print(f"[Compile] torch.compile(inductor) - first run, may be slow")
+            elif compile_enabled:
+                print(f"[Compile] Cached - fast startup")
+            else:
+                print(f"[Compile] Disabled by config")
 
         weight = torch.load(weight_path, map_location="cpu")
         self.pro="pro"in weight
@@ -1312,6 +1345,16 @@ class RealWaifuUpScaler(object):
         else:self.model=self.model.to(device)
         self.model.load_state_dict(weight, strict=True)
         self.model.eval()
+
+        # torch.compile 优化 (inductor 后端，不需要 triton)
+        if compile_enabled and _compile_status and device != "cpu" and "cuda" in device:
+            try:
+                print("[Compile] Applying torch.compile(inductor)...", flush=True)
+                self.model = torch.compile(self.model, backend="inductor")
+                print("[Compile] torch.compile(inductor) applied successfully", flush=True)
+            except Exception as e:
+                print(f"[Compile] Failed: {e}, using eager mode")
+
         self.half=half
         self.device=device
 

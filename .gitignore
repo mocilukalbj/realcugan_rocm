@@ -14,3 +14,5 @@ weights_v3/
 *.onnx
 log.txt
 .cudnn_benchmark_done
+.compile_cache_done
+PERFORMANCE_DECISION.md

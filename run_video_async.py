@@ -56,7 +56,7 @@ signal.signal(signal.SIGTERM, _signal_handler)
 os.environ.setdefault("PYTORCH_ALLOC_CONF", "max_split_size_mb:128")
 
 sys.path.insert(0, str(Path(__file__).parent))
-from upcunet_v3 import RealWaifuUpScaler, _mark_cudnn_benchmark_done
+from upcunet_v3 import RealWaifuUpScaler, _mark_cudnn_benchmark_done, _mark_compile_done
 
 MODEL_DIR = Path(__file__).parent
 SUPPORTED_VIDEO = {'.mp4', '.mkv', '.avi', '.mov', '.webm', '.flv', '.wmv', '.m4v'}
@@ -282,8 +282,9 @@ class AsyncPipeline:
         self.frame_idx = 1
         print(f"[GPU]     Warmup done, starting async pipeline...\n", flush=True)
 
-        # 标记 benchmark 完成，创建缓存文件
+        # 标记 benchmark 和 compile 完成，创建缓存文件
         _mark_cudnn_benchmark_done()
+        _mark_compile_done()
 
         # ── 启动异步预读线程 ──
         self.frame_queue = queue.Queue(maxsize=2)  # 双缓冲
@@ -387,7 +388,8 @@ def setup_model(args):
     wpath = MODEL_DIR / args.model
     if not wpath.exists():
         sys.exit(f"[Error] Model not found: {wpath}")
-    return RealWaifuUpScaler(args.scale, str(wpath), half=not args.fp32, device=device)
+    compile_enabled = getattr(args, 'compile', True)  # 默认启用
+    return RealWaifuUpScaler(args.scale, str(wpath), half=not args.fp32, device=device, compile_enabled=compile_enabled)
 
 
 def parse_config(path):
@@ -409,7 +411,7 @@ def parse_config(path):
         "输入": "input", "输出": "output", "模式": "mode", "模型": "model",
         "放大倍数": "scale", "分块模式": "tile_mode",
         "AMF质量": "amf_qp", "输出后缀": "suffix", "日志": "log",
-        "去重": "dedup",
+        "去重": "dedup", "编译": "compile",
     }
     for cn, en in alias_map.items():
         if cn in cfg:
@@ -433,6 +435,8 @@ def main():
     p.add_argument("--suffix", type=str, default="")
     p.add_argument("--dedup", action="store_true")
     p.add_argument("--dedup-window", type=int, default=0)
+    p.add_argument("--compile", action="store_true", default=True)
+    p.add_argument("--no-compile", action="store_false", dest="compile")
     p.add_argument("--verbose", action="store_true")
     args = p.parse_args()
 
@@ -477,6 +481,9 @@ def main():
         dedup_val = cfg.get("去重") or cfg.get("dedup", "")
         if dedup_val.strip().lower() in ("是", "yes", "true", "1"):
             args.dedup = True
+        compile_val = cfg.get("编译") or cfg.get("compile", "")
+        if compile_val.strip().lower() in ("否", "no", "false", "0"):
+            args.compile = False
 
         print(f"[Config] Input:  {cfg.get('输入') or cfg.get('input') or 'N/A'}")
         print(f"[Config] Output: {cfg.get('输出') or cfg.get('output') or 'N/A'}")
@@ -484,6 +491,7 @@ def main():
         print(f"[Config] Scale:  {cfg.get('放大倍数') or cfg.get('scale') or '2'}x")
         print(f"[Config] Tile:   {cfg.get('分块模式') or cfg.get('tile_mode') or '0'}")
         print(f"[Config] Dedup:  {cfg.get('去重') or cfg.get('dedup') or 'No'}")
+        print(f"[Config] Compile: {cfg.get('编译') or cfg.get('compile') or 'Yes'}")
         print()
 
     if not args.input or not args.output:
